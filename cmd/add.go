@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/ini.v1"
 )
 
 // addCmd represents the add command
@@ -31,29 +30,19 @@ func init() {
 }
 
 func addProfile() error {
-	cfg, err := ini.Load("./.aws-assume.toml")
+	ProfileConfig.Set(profileFlag, map[string]string{
+		"account": accountFlag,
+		"role":    roleFlag,
+	})
+	err := ProfileConfig.WriteConfig()
 	if err != nil {
 		return err
 	}
-
-	newProfileSection, err := cfg.NewSection(profileFlag)
-	if err != nil {
-		return err
-	}
-	newAccountKey, err := newProfileSection.NewKey("account", accountFlag)
-	if err != nil {
-		return err
-	}
-	newRoleKey, err := newProfileSection.NewKey("role", roleFlag)
-	if err != nil {
-		return err
-	}
-	cfg.SaveTo("./.aws-assume.toml")
 
 	fmt.Printf("*******************************************\n")
-	fmt.Printf("Successfully created Profile: %s\n", newProfileSection.Name())
-	fmt.Printf("Account: %s\n", newAccountKey)
-	fmt.Printf("Role: %s\n", newRoleKey)
+	fmt.Printf("Successfully created Profile: %s\n", profileFlag)
+	fmt.Printf("Account: %s\n", accountFlag)
+	fmt.Printf("Role: %s\n", roleFlag)
 	fmt.Printf("*******************************************\n")
 
 	return nil

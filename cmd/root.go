@@ -4,11 +4,22 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var profileFlag string
-var accountFlag string
-var roleFlag string
+var (
+	profileFlag      string
+	accountFlag      string
+	roleFlag         string
+	AppConfig        = viper.New()
+	ProfileConfig    = viper.New()
+	CredentialConfig = viper.New()
+)
+
+const (
+	DefaultCredentialsFile = "./credentials"
+	DefaultProfile         = "default"
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -26,13 +37,28 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.assume-role.yaml)")
+	AppConfig.SetEnvPrefix("AWS_ASSUME")
+	AppConfig.AutomaticEnv()
+	AppConfig.BindEnv("profile")
+	AppConfig.BindEnv("credentials_file")
+	AppConfig.BindEnv("access_key_id")
+	AppConfig.BindEnv("secret_access_key")
+	AppConfig.SetDefault("credentials_file", DefaultCredentialsFile)
+	AppConfig.SetDefault("profile", DefaultProfile)
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	ProfileConfig.SetConfigName(".aws-assume")
+	ProfileConfig.AddConfigPath(".")
+	err := ProfileConfig.ReadInConfig()
+	if err != nil {
+		cobra.CheckErr(err)
+	}
+
+	CredentialConfig.SetConfigName("credentials")
+	CredentialConfig.SetConfigType("ini")
+	CredentialConfig.AddConfigPath(".")
+	err = CredentialConfig.ReadInConfig()
+	if err != nil {
+		cobra.CheckErr(err)
+	}
 }
