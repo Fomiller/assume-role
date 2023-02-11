@@ -1,7 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -25,7 +21,7 @@ var loginCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := login()
 		if err != nil {
-			panic(err)
+			cobra.CheckErr(err)
 		}
 		// viper.SetConfigType("toml")
 
@@ -45,21 +41,22 @@ func login() error {
 	profile := ProfileConfig.AllSettings()[profileFlag].(map[string]interface{})
 	arn := createRoleArn(profile["account"].(string), profile["role"].(string))
 
-	creds, err := getCredentials(arn)
+	awsCreds, err := getCredentials(arn)
 	if err != nil {
 		return err
 	}
-	fmt.Println("credentials will expire at: ", creds.Expires)
+	fmt.Println("credentials will expire at: ", awsCreds.Expires)
 
-	credentialsFile, err := ini.Load(AppConfig.GetString("credentials_file"))
+	credentialsFile := fmt.Sprintf("%s/%s", AppConfig.GetString("credentials_dir"), "credentials")
+	creds, err := ini.Load(credentialsFile)
 	if err != nil {
 		return err
 	}
 
-	credentialsFile.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(creds.AccessKeyID)
-	credentialsFile.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(creds.SecretAccessKey)
-	credentialsFile.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(creds.SessionToken)
-	credentialsFile.SaveTo(AppConfig.GetString("credentials_file"))
+	creds.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(awsCreds.AccessKeyID)
+	creds.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(awsCreds.SecretAccessKey)
+	creds.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(awsCreds.SessionToken)
+	creds.SaveTo(credentialsFile)
 	return nil
 }
 

@@ -3,16 +3,18 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
+	"gopkg.in/ini.v1"
 )
 
-// listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		printProfileConfig()
+		err := printProfileConfig()
+		if err != nil {
+			cobra.CheckErr(err)
+		}
 	},
 }
 
@@ -23,14 +25,15 @@ func init() {
 }
 
 func printProfileConfig() error {
-	tFile, err := toml.LoadFile(AppConfig.GetString("config_file"))
+	configFile := fmt.Sprintf("%s/%s", AppConfig.GetString("config_dir"), DefaultConfigFile)
+	profiles, err := ini.Load(configFile)
 	if err != nil {
 		return err
 	}
-	for k, v := range tFile.ToMap() {
-		fmt.Printf("[%s]\n", k)
-		fmt.Printf("account: %s\n", v.(map[string]interface{})["account"].(string))
-		fmt.Printf("role: %s\n\n", v.(map[string]interface{})["role"].(string))
+	for _, v := range profiles.Sections()[1:] {
+		fmt.Printf("[%s]\n", v.Name())
+		fmt.Printf("account: %s\n", v.Key("account"))
+		fmt.Printf("role: %s\n\n", v.Key("role"))
 	}
 	return nil
 }

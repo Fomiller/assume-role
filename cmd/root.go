@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -14,11 +16,13 @@ var (
 	AppConfig        = viper.New()
 	ProfileConfig    = viper.New()
 	CredentialConfig = viper.New()
+	HomeDir          string
 )
 
 const (
-	DefaultCredentialsFile = "./credentials"
-	DefaultProfile         = "default"
+	DefaultAWSCredentialsDir = ".aws/"
+	DefaultConfigFile        = ".aws-assume.ini"
+	DefaultProfile           = "default"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -37,26 +41,30 @@ func Execute() {
 }
 
 func init() {
+	HomeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	AppConfig.SetEnvPrefix("AWS_ASSUME")
 	AppConfig.AutomaticEnv()
 	AppConfig.BindEnv("profile")
-	AppConfig.BindEnv("credentials_file")
 	AppConfig.BindEnv("access_key_id")
 	AppConfig.BindEnv("secret_access_key")
-	AppConfig.SetDefault("credentials_file", DefaultCredentialsFile)
+	AppConfig.SetDefault("credentials_dir", fmt.Sprintf("%s/%s", HomeDir, DefaultAWSCredentialsDir))
+	AppConfig.SetDefault("config_dir", HomeDir)
 	AppConfig.SetDefault("profile", DefaultProfile)
 
 	ProfileConfig.SetConfigName(".aws-assume")
-	ProfileConfig.AddConfigPath(".")
-	err := ProfileConfig.ReadInConfig()
+	ProfileConfig.AddConfigPath(AppConfig.GetString("config_dir"))
+	err = ProfileConfig.ReadInConfig()
 	if err != nil {
 		cobra.CheckErr(err)
 	}
 
 	CredentialConfig.SetConfigName("credentials")
 	CredentialConfig.SetConfigType("ini")
-	CredentialConfig.AddConfigPath(".")
+	CredentialConfig.AddConfigPath(AppConfig.GetString("credentials_dir"))
 	err = CredentialConfig.ReadInConfig()
 	if err != nil {
 		cobra.CheckErr(err)

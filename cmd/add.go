@@ -1,13 +1,10 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/ini.v1"
 )
 
 // addCmd represents the add command
@@ -15,7 +12,10 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a profile to your aws-assume.toml file",
 	Run: func(cmd *cobra.Command, args []string) {
-		addProfile()
+		err := addProfile()
+		if err != nil {
+			cobra.CheckErr(err)
+		}
 	},
 }
 
@@ -30,11 +30,24 @@ func init() {
 }
 
 func addProfile() error {
-	ProfileConfig.Set(profileFlag, map[string]string{
-		"account": accountFlag,
-		"role":    roleFlag,
-	})
-	err := ProfileConfig.WriteConfig()
+	// ProfileConfig.Set(profileFlag, map[string]string{
+	// 	"account": accountFlag,
+	// 	"role":    roleFlag,
+	// })
+	// err := ProfileConfig.WriteConfig()
+	// if err != nil {
+	// 	return err
+	// }
+	profileFile := fmt.Sprintf("%s/%s", AppConfig.GetString("config_dir"), DefaultConfigFile)
+	fmt.Println(profileFile)
+	creds, err := ini.Load(profileFile)
+	if err != nil {
+		return err
+	}
+
+	creds.Section(profileFlag).Key("account").SetValue(accountFlag)
+	creds.Section(profileFlag).Key("role").SetValue(roleFlag)
+	err = creds.SaveTo(profileFile)
 	if err != nil {
 		return err
 	}
