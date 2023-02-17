@@ -52,7 +52,7 @@ func login() error {
 		return err
 	}
 
-	credPath := fmt.Sprintf("%s/%s", AppConfig.GetString("credentials_dir"), "credentials.ini")
+	credPath := fmt.Sprintf("%s/%s", AppConfig.GetString("credentials_dir"), DefaultAWSCredentialFile)
 	credsDir := path.Dir(credPath)
 	err = os.MkdirAll(credsDir, 0755)
 	if err != nil {

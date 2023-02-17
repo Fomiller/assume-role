@@ -20,6 +20,7 @@ var (
 
 const (
 	DefaultAWSCredentialsDir = ".aws"
+	DefaultAWSCredentialFile = "credential"
 	DefaultConfigFile        = ".aws-assume.ini"
 	DefaultProfile           = "default"
 )
@@ -38,6 +39,7 @@ func Execute() {
 }
 
 func init() {
+	ini.DefaultSection = "default"
 	HomeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
