@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/ini.v1"
 )
 
 var listCmd = &cobra.Command{
@@ -25,8 +24,7 @@ func init() {
 }
 
 func printProfileConfig() error {
-	configFile := fmt.Sprintf("%s/%s", AppConfig.GetString("config_dir"), DefaultConfigFile)
-	profiles, err := ini.Load(configFile)
+	profiles, err := getAssumeConfig()
 	if err != nil {
 		return err
 	}

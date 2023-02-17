@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/ini.v1"
 )
 
 // addCmd represents the add command
@@ -30,33 +29,23 @@ func init() {
 }
 
 func addProfile() error {
-	// ProfileConfig.Set(profileFlag, map[string]string{
-	// 	"account": accountFlag,
-	// 	"role":    roleFlag,
-	// })
-	// err := ProfileConfig.WriteConfig()
-	// if err != nil {
-	// 	return err
-	// }
-	profileFile := fmt.Sprintf("%s/%s", AppConfig.GetString("config_dir"), DefaultConfigFile)
-	fmt.Println(profileFile)
-	creds, err := ini.Load(profileFile)
+	assumeCfg, err := getAssumeConfig()
+	assumeCfg.Section(profileFlag).Key("account").SetValue(accountFlag)
+	assumeCfg.Section(profileFlag).Key("role").SetValue(roleFlag)
+	err = assumeCfg.SaveTo(assumeConfigPath())
 	if err != nil {
 		return err
 	}
 
-	creds.Section(profileFlag).Key("account").SetValue(accountFlag)
-	creds.Section(profileFlag).Key("role").SetValue(roleFlag)
-	err = creds.SaveTo(profileFile)
-	if err != nil {
-		return err
-	}
+	printSuccessfulCreateProfileMessage()
 
-	fmt.Printf("*******************************************\n")
+	return nil
+}
+
+func printSuccessfulCreateProfileMessage() {
+	fmt.Printf("*******************************************\n\n")
 	fmt.Printf("Successfully created Profile: %s\n", profileFlag)
 	fmt.Printf("Account: %s\n", accountFlag)
 	fmt.Printf("Role: %s\n", roleFlag)
-	fmt.Printf("*******************************************\n")
-
-	return nil
+	fmt.Printf("\n*******************************************\n")
 }

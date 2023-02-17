@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -12,7 +12,7 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "print the current environment variables for aws-assume",
 	Run: func(cmd *cobra.Command, args []string) {
-		getConfig()
+		printConfig()
 	},
 }
 
@@ -20,9 +20,10 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 }
 
-func getConfig() {
-	fmt.Printf("AWS_ASSUME_CONFIG_DIR: %s\n", AppConfig.GetString("config_dir"))
-	fmt.Printf("AWS_ASSUME_PROFILE: %s\n", AppConfig.GetString("profile"))
-	fmt.Printf("AWS_ASSUME_SECRET_ACCESS_KEY: %s\n", AppConfig.GetString("secret_access_key"))
-	fmt.Printf("AWS_ASSUME_ACCESS_KEY_ID: %s\n", os.Getenv("access_key_id"))
+func printConfig() {
+	for _, v := range AppConfig.AllKeys() {
+		envName := fmt.Sprintf("AWS_ASSUME_%s", strings.ToUpper(v))
+		envValue := AppConfig.GetString(v)
+		fmt.Printf("%s: %s\n", envName, envValue)
+	}
 }

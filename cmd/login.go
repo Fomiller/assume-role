@@ -3,9 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/spf13/cobra"
@@ -23,12 +26,6 @@ var loginCmd = &cobra.Command{
 		if err != nil {
 			cobra.CheckErr(err)
 		}
-		// viper.SetConfigType("toml")
-
-		// err = login()
-		// if err != nil {
-		// 	cobra.CheckErr(err)
-		// }
 	},
 }
 
@@ -38,42 +35,62 @@ func init() {
 }
 
 func login() error {
-	profile := ProfileConfig.AllSettings()[profileFlag].(map[string]interface{})
-	arn := createRoleArn(profile["account"].(string), profile["role"].(string))
+	assumeCfg, err := getAssumeConfig()
+	if err != nil {
+		return err
+	}
+
+	profile, err := assumeCfg.GetSection(profileFlag)
+	if err != nil {
+		return err
+	}
+
+	arn := createRoleArn(profile.Key("account").String(), profile.Key("role").String())
 
 	awsCreds, err := getCredentials(arn)
 	if err != nil {
 		return err
 	}
-	fmt.Println("credentials will expire at: ", awsCreds.Expires)
 
-	credentialsFile := fmt.Sprintf("%s/%s", AppConfig.GetString("credentials_dir"), "credentials")
-	creds, err := ini.Load(credentialsFile)
+	credPath := fmt.Sprintf("%s/%s", AppConfig.GetString("credentials_dir"), "credentials")
+	credsDir := path.Dir(credPath)
+	err = os.MkdirAll(credsDir, 0755)
 	if err != nil {
 		return err
 	}
 
-	creds.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(awsCreds.AccessKeyID)
-	creds.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(awsCreds.SecretAccessKey)
-	creds.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(awsCreds.SessionToken)
-	creds.SaveTo(credentialsFile)
+	credCfg, err := ini.LooseLoad(credPath)
+	if err != nil {
+		return err
+	}
+
+	updateCredentials(credCfg, credPath, awsCreds, arn)
+	printSucessfulAssumeMessage(arn, credPath, awsCreds)
+
 	return nil
 }
 
-func getCredentials(awsRoleArn string) (aws.Credentials, error) {
-	region := "us-east-1"
-
+func getCredentials(arn string) (aws.Credentials, error) {
 	ctx := context.TODO()
+	region := AppConfig.GetString("region")
+	accessKeyId := AppConfig.GetString("access_key_id")
+	secretAccessKey := AppConfig.GetString("secret_access_key")
+	sessionToken := ""
 
-	defaultConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			accessKeyId,
+			secretAccessKey,
+			sessionToken,
+		)))
 	if err != nil {
 		return aws.Credentials{}, err
 	}
 
-	stsClient := sts.NewFromConfig(defaultConfig)
-	provider := stscreds.NewAssumeRoleProvider(stsClient, awsRoleArn)
-	defaultConfig.Credentials = aws.NewCredentialsCache(provider)
-	creds, err := defaultConfig.Credentials.Retrieve(context.Background())
+	stsClient := sts.NewFromConfig(cfg)
+	provider := stscreds.NewAssumeRoleProvider(stsClient, arn)
+	creds, err := aws.NewCredentialsCache(provider).Retrieve(ctx)
 	if err != nil {
 		return aws.Credentials{}, err
 	}
@@ -85,4 +102,20 @@ func getCredentials(awsRoleArn string) (aws.Credentials, error) {
 func createRoleArn(account string, role string) string {
 	arn := fmt.Sprintf("arn:aws:iam::%s:role/%s", account, role)
 	return arn
+}
+
+func updateCredentials(credFile *ini.File, credPath string, awsCreds aws.Credentials, arn string) {
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(awsCreds.AccessKeyID)
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(awsCreds.SecretAccessKey)
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(awsCreds.SessionToken)
+	credFile.SaveTo(credPath)
+}
+
+func printSucessfulAssumeMessage(arn string, credPath string, awsCreds aws.Credentials) {
+	fmt.Printf("**********************************************\n\n")
+	fmt.Printf("Assumed Role %s \n", arn)
+	fmt.Printf("Credentials set for [ %s ] profile.\n", AppConfig.GetString("profile"))
+	fmt.Printf("Credentials stored in %s.\n", credPath)
+	fmt.Printf("Credentials will expire at: %s\n", awsCreds.Expires)
+	fmt.Printf("\n**********************************************\n\n")
 }

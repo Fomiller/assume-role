@@ -7,20 +7,19 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/ini.v1"
 )
 
 var (
-	profileFlag      string
-	accountFlag      string
-	roleFlag         string
-	AppConfig        = viper.New()
-	ProfileConfig    = viper.New()
-	CredentialConfig = viper.New()
-	HomeDir          string
+	profileFlag string
+	accountFlag string
+	roleFlag    string
+	AppConfig   = viper.New()
+	HomeDir     string
 )
 
 const (
-	DefaultAWSCredentialsDir = ".aws/"
+	DefaultAWSCredentialsDir = ".aws"
 	DefaultConfigFile        = ".aws-assume.ini"
 	DefaultProfile           = "default"
 )
@@ -31,8 +30,6 @@ var rootCmd = &cobra.Command{
 	Short: "switch easily between aws roles",
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -49,24 +46,30 @@ func init() {
 	AppConfig.SetEnvPrefix("AWS_ASSUME")
 	AppConfig.AutomaticEnv()
 	AppConfig.BindEnv("profile")
+	AppConfig.BindEnv("region")
 	AppConfig.BindEnv("access_key_id")
 	AppConfig.BindEnv("secret_access_key")
 	AppConfig.SetDefault("credentials_dir", fmt.Sprintf("%s/%s", HomeDir, DefaultAWSCredentialsDir))
 	AppConfig.SetDefault("config_dir", HomeDir)
 	AppConfig.SetDefault("profile", DefaultProfile)
 
-	ProfileConfig.SetConfigName(".aws-assume")
-	ProfileConfig.AddConfigPath(AppConfig.GetString("config_dir"))
-	err = ProfileConfig.ReadInConfig()
-	if err != nil {
-		cobra.CheckErr(err)
+	defaultRegion, present := os.LookupEnv("AWS_REGION")
+	if present {
+		AppConfig.SetDefault("region", defaultRegion)
+	} else {
+		AppConfig.SetDefault("region", "us-east-1")
 	}
+}
 
-	CredentialConfig.SetConfigName("credentials")
-	CredentialConfig.SetConfigType("ini")
-	CredentialConfig.AddConfigPath(AppConfig.GetString("credentials_dir"))
-	err = CredentialConfig.ReadInConfig()
+func getAssumeConfig() (*ini.File, error) {
+	cfgPath := assumeConfigPath()
+	cfg, err := ini.Load(cfgPath)
 	if err != nil {
-		cobra.CheckErr(err)
+		return nil, err
 	}
+	return cfg, nil
+}
+
+func assumeConfigPath() string {
+	return fmt.Sprintf("%s/%s", AppConfig.GetString("config_dir"), DefaultConfigFile)
 }
