@@ -46,6 +46,5 @@ func printSuccessfulCreateProfileMessage() {
 	fmt.Printf("*******************************************\n\n")
 	fmt.Printf("Successfully created Profile: %s\n", profileFlag)
 	fmt.Printf("Account: %s\n", accountFlag)
-	fmt.Printf("Role: %s\n", roleFlag)
-	fmt.Printf("\n*******************************************\n")
+	fmt.Printf("Role: %s\n\n", roleFlag)
 }

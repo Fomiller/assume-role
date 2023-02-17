@@ -116,6 +116,5 @@ func printSucessfulAssumeMessage(arn string, credPath string, awsCreds aws.Crede
 	fmt.Printf("Assumed Role %s \n", arn)
 	fmt.Printf("Credentials set for [ %s ] profile.\n", AppConfig.GetString("profile"))
 	fmt.Printf("Credentials stored in %s.\n", credPath)
-	fmt.Printf("Credentials will expire at: %s\n", awsCreds.Expires)
-	fmt.Printf("\n**********************************************\n\n")
+	fmt.Printf("Credentials will expire at: %s\n\n", awsCreds.Expires)
 }
