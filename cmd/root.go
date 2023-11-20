@@ -20,7 +20,7 @@ var (
 
 const (
 	DefaultAWSCredentialsDir = ".aws"
-	DefaultAWSCredentialFile = "credential"
+	DefaultAWSCredentialFile = "credentials"
 	DefaultConfigFile        = ".aws-assume.ini"
 	DefaultProfile           = "default"
 )
