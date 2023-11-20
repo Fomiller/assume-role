@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Fomiller/assume-role/cmd"
+	"github.com/fomiller/assume-role/cmd"
 )
 
 func main() {
