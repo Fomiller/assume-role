@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 )
@@ -70,7 +70,7 @@ func login() error {
 	return nil
 }
 
-func getCredentials(arn string) (aws.Credentials, error) {
+func getCredentials(arn string) (types.Credentials, error) {
 	ctx := context.TODO()
 	region := AppConfig.GetString("region")
 	accessKeyId := AppConfig.GetString("access_key_id")
@@ -85,17 +85,30 @@ func getCredentials(arn string) (aws.Credentials, error) {
 			sessionToken,
 		)))
 	if err != nil {
-		return aws.Credentials{}, err
+		return types.Credentials{}, err
+	}
+
+	durationSeconds := int32(6 * 60 * 60)
+	params := &sts.AssumeRoleInput{
+		RoleArn:         &arn,
+		RoleSessionName: aws.String("assume-role"),
+		DurationSeconds: &durationSeconds,
 	}
 
 	stsClient := sts.NewFromConfig(cfg)
-	provider := stscreds.NewAssumeRoleProvider(stsClient, arn)
-	creds, err := aws.NewCredentialsCache(provider).Retrieve(ctx)
+	resp, err := stsClient.AssumeRole(context.TODO(), params)
 	if err != nil {
-		return aws.Credentials{}, err
+		panic("error assuming role: " + err.Error())
+		return types.Credentials{}, err
 	}
+	// provider := stscreds.NewAssumeRoleProvider(stsClient, arn)
+	// creds, err := aws.NewCredentialsCache(provider).Retrieve(ctx)
+	// if err != nil {
+	// 	return aws.Credentials{}, err
+	// }
 
-	return creds, nil
+	creds := resp.Credentials
+	return *creds, nil
 
 }
 
@@ -104,17 +117,18 @@ func createRoleArn(account string, role string) string {
 	return arn
 }
 
-func updateCredentials(credFile *ini.File, credPath string, awsCreds aws.Credentials, arn string) {
-	credFile.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(awsCreds.AccessKeyID)
-	credFile.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(awsCreds.SecretAccessKey)
-	credFile.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(awsCreds.SessionToken)
+func updateCredentials(credFile *ini.File, credPath string, awsCreds types.Credentials, arn string) {
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_access_key_id").SetValue(*awsCreds.AccessKeyId)
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_secret_access_key").SetValue(*awsCreds.SecretAccessKey)
+	credFile.Section(AppConfig.GetString("profile")).Key("aws_session_token").SetValue(*awsCreds.SessionToken)
+
 	credFile.SaveTo(credPath)
 }
 
-func printSucessfulAssumeMessage(arn string, credPath string, awsCreds aws.Credentials) {
+func printSucessfulAssumeMessage(arn string, credPath string, awsCreds types.Credentials) {
 	fmt.Printf("**********************************************\n\n")
 	fmt.Printf("Assumed Role %s \n", arn)
 	fmt.Printf("Credentials set for [ %s ] profile.\n", AppConfig.GetString("profile"))
 	fmt.Printf("Credentials stored in %s.\n", credPath)
-	fmt.Printf("Credentials will expire at: %s\n\n", awsCreds.Expires)
+	fmt.Printf("Credentials will expire at: %s\n\n", awsCreds.Expiration)
 }
