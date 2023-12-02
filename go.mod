@@ -37,4 +37,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/Fomiller/assume-role => github.com/fomiller/asssume-role v0.1.2
+replace github.com/Fomiller/assume-role => github.com/fomiller/asssume-role v0.1.3
